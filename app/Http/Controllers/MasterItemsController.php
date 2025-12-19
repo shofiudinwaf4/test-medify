@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Kategori;
 use App\Models\MasterItem;
+use App\Exports\ItemExport;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class MasterItemsController extends Controller
 {
@@ -37,10 +40,12 @@ class MasterItemsController extends Controller
     public function formView($method, $id = 0)
     {
         if ($method == 'new') {
-            $item = [];
+            $item = null;
         } else {
-            $item = MasterItem::find($id);
+            $item = MasterItem::with('kategori')->findOrFail($id);
         }
+        $kategori = Kategori::all();
+        $data['kategori'] = $kategori;
         $data['item'] = $item;
         $data['method'] = $method;
         return view('master_items.form.index', $data);
@@ -48,50 +53,66 @@ class MasterItemsController extends Controller
 
     public function singleView($kode)
     {
-        $data['data'] = MasterItem::where('kode', $kode)->first();
+        $data['data'] = MasterItem::with('kategori')->where('kode', $kode)->first();
         return view('master_items.single.index', $data);
     }
 
     public function formSubmit(Request $request, $method, $id = 0)
     {
         if ($method == 'new') {
-            $data_item = new MasterItem;
-            $kode = MasterItem::count('id');
-            $kode = $kode + 1;
-            $kode = str_pad($kode, 5, '0', STR_PAD_LEFT);
-            sleep(3);
+            $item = new MasterItem;
+            $kode = str_pad(MasterItem::count() + 1, 5, '0', STR_PAD_LEFT);
         } else {
-            $data_item = MasterItem::find($id);
-            $kode = $data_item->kode;
+            $item = MasterItem::findOrFail($id);
+            $kode = $item->kode;
         }
 
-        $data_item->nama = $request->nama;
-        $data_item->harga_beli = $request->harga_beli;
-        $data_item->laba = $request->laba;
-        $data_item->kode = $kode;
-        $data_item->supplier = $request->supplier;
-        $data_item->jenis = $request->jenis;
-        $data_item->save();
+        // SIMPAN ITEM DULU
+        $item->nama        = $request->nama;
+        $item->harga_beli  = $request->harga_beli;
+        $item->laba        = $request->laba;
+        $item->supplier    = $request->supplier;
+        $item->jenis       = $request->jenis;
+        $item->kode        = $kode;
+        $item->save(); // ⬅️ WAJIB
+
+        // SIMPAN RELASI PIVOT
+        $item->kategori()->sync($request->kategori);
 
         return redirect('master-items');
     }
 
+    public function exportExcel()
+    {
+        return Excel::download(
+            new ItemExport,
+            'data-item-' . now()->format('Ymd_His') . '.xlsx'
+        );
+    }
+
     public function delete($id)
     {
-        MasterItem::find($id)->delete();
+        $item = MasterItem::findOrFail($id);
+
+        // hapus relasi pivot dulu (opsional karena cascade)
+        $item->kategori()->detach();
+
+        // hapus item
+        $item->delete();
+
+        return redirect('master-items')->with('success', 'Item berhasil dihapus');
         return redirect('master-items');
     }
 
     public function updateRandomData()
     {
         $data = MasterItem::get();
-        foreach($data as $item)
-        {
+        foreach ($data as $item) {
             $kode = $item->id;
             $kode = str_pad($kode, 5, '0', STR_PAD_LEFT);
 
-            $item->harga_beli = rand(100,1000000);
-            $item->laba = rand(10,99);
+            $item->harga_beli = rand(100, 1000000);
+            $item->laba = rand(10, 99);
             $item->kode = $kode;
             $item->supplier = $this->getRandomSupplier();
             $item->jenis = $this->getRandomJenis();
@@ -101,15 +122,15 @@ class MasterItemsController extends Controller
 
     private function getRandomSupplier()
     {
-        $array = ['Tokopaedi','Bukulapuk','TokoBagas','E Commurz','Blublu'];
-        $random = rand(0,4);
+        $array = ['Tokopaedi', 'Bukulapuk', 'TokoBagas', 'E Commurz', 'Blublu'];
+        $random = rand(0, 4);
         return $array[$random];
     }
 
     private function getRandomJenis()
     {
-        $array = ['Obat','Alkes','Matkes','Umum','ATK'];
-        $random = rand(0,4);
+        $array = ['Obat', 'Alkes', 'Matkes', 'Umum', 'ATK'];
+        $random = rand(0, 4);
         return $array[$random];
     }
 }
