@@ -33,20 +33,21 @@
 
                 <div class="collapse navbar-collapse" id="navbarSupportedContent">
                     <!-- Left Side Of Navbar -->
-                    <ul class="navbar-nav me-auto">
-                        <li>
-                            <a href="/master-items">Master Item</a>
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/master-items">Master Item</a>
                         </li>
-                        <li>
-                            <a href="/kategori">Kategori</a>
+
+                        <li class="nav-item">
+                            <a class="nav-link" href="/kategori">Kategori</a>
                         </li>
-                        <li>
-                            <a href="{{ route('master-items.export.excel') }}" class="btn btn-success">
+
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('master-items.export.excel') }}">
                                 Download Excel Master
                             </a>
                         </li>
                     </ul>
-
                     <!-- Right Side Of Navbar -->
                     <ul class="navbar-nav ms-auto">
                         <!-- Authentication Links -->
